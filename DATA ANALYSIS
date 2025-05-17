@@ -1,0 +1,63 @@
+# === This code is mainly used for a broad Catagorization of the Synthetic Data that the model Generates ===
+
+import requests
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# === CONFIGURATION ===
+URL = "https://comfy-capybara-0290ed.netlify.app/api/eeg"
+WAVE_TYPE = "alpha"  # Try: 'delta', 'theta', 'alpha', 'beta'
+
+# === FETCH EEG DATA ===
+response = requests.post(URL, json={"waveType": WAVE_TYPE})
+if response.status_code != 200:
+    raise RuntimeError(f"Error fetching data: {response.status_code}")
+
+data = response.json()["data"]
+df = pd.DataFrame(data)
+
+# === BASIC STATISTICS ===
+print("\n--- EEG STATISTICS ---")
+print("Wave Type:", WAVE_TYPE)
+print("Mean Amplitude:", df['amplitude'].mean())
+print("Max Amplitude:", df['amplitude'].max())
+print("Min Amplitude:", df['amplitude'].min())
+print("Std Dev Amplitude:", df['amplitude'].std())
+
+print("\nMean Frequency:", df['frequency'].mean())
+print("Signal Quality (mean):", df['quality'].mean())
+
+# Count artifacts
+artifact_counts = df[df["hasArtifact"] == True]["artifactType"].value_counts()
+print("\nArtifact Counts:")
+print(artifact_counts)
+
+# === PLOTTING ===
+plt.figure(figsize=(15, 8))
+
+# Plot EEG signal
+plt.subplot(3, 1, 1)
+plt.plot(df['time'], df['value'], label='EEG Signal', color='purple')
+plt.title(f"EEG Signal Over Time ({WAVE_TYPE} wave)")
+plt.xlabel("Time (ms)")
+plt.ylabel("Signal Value")
+plt.grid(True)
+
+# Histogram of signal quality
+plt.subplot(3, 1, 2)
+plt.hist(df['quality'], bins=20, color='skyblue', edgecolor='black')
+plt.title("Signal Quality Distribution")
+plt.xlabel("Quality (%)")
+plt.ylabel("Frequency")
+
+# Pie chart of artifact types
+plt.subplot(3, 1, 3)
+if not artifact_counts.empty:
+    plt.pie(artifact_counts, labels=artifact_counts.index, autopct='%1.1f%%', startangle=140)
+    plt.title("Artifact Type Distribution")
+else:
+    plt.text(0.5, 0.5, "No Artifacts Detected", horizontalalignment='center', verticalalignment='center', fontsize=12)
+    plt.axis("off")
+
+plt.tight_layout()
+plt.show()
